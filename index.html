@@ -17,11 +17,21 @@ html, body { width:100%; height:100%; background:#0a0014; overflow:hidden; font-
 #creature-wrap{ position:fixed; inset:0; pointer-events:none; z-index:4; display:flex; align-items:center; justify-content:center; }
 #creature-link{ pointer-events:all; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 #creature-img { width:clamp(300px,55vw,700px); height:auto; mix-blend-mode:screen;
-  filter: drop-shadow(0 0 20px rgba(0,255,220,0.6)) drop-shadow(0 0 50px rgba(200,0,255,0.4));
+  filter:
+    drop-shadow(0 0 6px  rgba(255, 60, 10, 0.95))
+    drop-shadow(0 0 18px rgba(200, 20,  0, 0.80))
+    drop-shadow(0 0 40px rgba(140,  8,  0, 0.55))
+    drop-shadow(0 0 80px rgba( 70,  2,  0, 0.30))
+    drop-shadow(0 0 140px rgba( 30,  0,  0, 0.15));
   animation: floatCreature 5s ease-in-out infinite; position:relative; top:clamp(-20px,-3vh,0px);
   transition: filter 0.1s; }
 #creature-link:hover #creature-img {
-  filter: drop-shadow(0 0 35px rgba(0,255,220,1)) drop-shadow(0 0 70px rgba(255,0,200,0.7));
+  filter:
+    drop-shadow(0 0 8px  rgba(255, 70, 10, 1.00))
+    drop-shadow(0 0 24px rgba(220, 25,  0, 0.90))
+    drop-shadow(0 0 55px rgba(160, 10,  0, 0.68))
+    drop-shadow(0 0 100px rgba( 90,  3,  0, 0.40))
+    drop-shadow(0 0 170px rgba( 40,  0,  0, 0.20));
 }
 #ui           { position:fixed; inset:0; z-index:5; pointer-events:none; }
 
@@ -489,6 +499,7 @@ document.getElementById('penta-link').addEventListener('mouseenter',()=>{
 // ── CLICK FIRE: bezier tongue bonfire consuming screen upward ──
 document.getElementById('creature-link').addEventListener('click', e=>{
   e.preventDefault();
+  document.dispatchEvent(new CustomEvent('bonfireStart'));
   const url = e.currentTarget.href;
 
   const fc = document.createElement('canvas');
@@ -756,35 +767,34 @@ document.getElementById('creature-link').addEventListener('click', e=>{
 </script>
 
 <!-- Fire sound -->
-<audio id="fire-sound" src="fire.mp3" preload="auto" loop></audio>
+<audio id="fire-sound" src="fire.mp3" preload="auto"></audio>
 
 <script>
+(function(){
   const fireSound = document.getElementById('fire-sound');
-  let firePlaying = false;
 
-  // Start the fire sound if not already playing
-  function startFireSound() {
-    if (!firePlaying) {
-      fireSound.currentTime = 0;
-      fireSound.play().catch(e => {
-        console.log("Autoplay blocked. Click anywhere to start the fire sound.");
-        // Fallback: click anywhere to start sound
-        document.body.addEventListener('click', () => fireSound.play(), { once: true });
-        document.body.addEventListener('touchstart', () => fireSound.play(), { once: true });
-      });
-      firePlaying = true;
-    }
+  // Unlock AudioContext on very first user interaction (any click/touch)
+  // This primes the browser so the creature click can play audio immediately
+  let unlocked = false;
+  function unlock(){
+    if(unlocked) return;
+    unlocked = true;
+    // Create and immediately suspend a silent audio context to unlock the browser
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctx.resume().then(() => ctx.close());
+    // Also prime the audio element by loading it
+    fireSound.load();
   }
+  document.addEventListener('click',   unlock, { once: true });
+  document.addEventListener('touchend', unlock, { once: true });
+  document.addEventListener('keydown',  unlock, { once: true });
 
-  // Hook it into your fire animation
-  // If your fireTick function is already running, just call startFireSound once at the start
-  document.addEventListener('DOMContentLoaded', () => {
-    // Wait a tiny bit to make sure animation is initialized
-    setTimeout(startFireSound, 100);
+  // Play ONLY when bonfire starts (creature click)
+  document.addEventListener('bonfireStart', () => {
+    fireSound.currentTime = 0;
+    fireSound.play().catch(err => console.warn('Fire sound:', err));
   });
 
-  // Optional: stop the sound if page unloads
-  window.addEventListener('beforeunload', () => {
-    fireSound.pause();
-  });
+  window.addEventListener('beforeunload', () => { fireSound.pause(); });
+})();
 </script>
